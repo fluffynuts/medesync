@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# vim: ft=python columns=123 foldmethod=marker foldmarker=<<<,>>>
+# vim: ft=python columns=123 foldmethod=marker foldmarker=<<<,>>> noexpandtab
 # Released under the terms of the BSD license, outlined below:
 
 # Copyright (c) 2010, Davyd McColl
@@ -69,6 +69,7 @@ class SmartSync:
 		self.last_listing = []
 		self.status_ticks = 0
 		self.attempts = 120
+		self.ftp_size_cache = dict()
 #>>>
 	def __deinit__(self):#<<<*/
 		for conn in self.ftp_conns:
@@ -253,10 +254,12 @@ class SmartSync:
 				if remote_files.count(f + ".t") > 0:
 					# add this file to the archive list
 					to_archive.append(f)
-			dotparts = f.split(".")
-			if dotparts[-1] == "t" and remote_files.count(".".join(dotparts)) == 0:
+					# add the watched indicator for this file to the remove list
+					to_remove.append(f + ".t")
 				# remove orphaned watched file indicators
-				to_remove.append(f)
+				dotparts = f.split(".")
+				if dotparts[-1] == "t" and remote_files.count(".".join(dotparts)) == 0:
+					to_remove.append(f)
 			tmp = []
 			# remove watched markers from remote listing
 			for f in remote_files:
@@ -305,12 +308,14 @@ class SmartSync:
 		for f in to_archive:
 			# perform local move (may be a rename, may be a copy-and-delete)
 			if self.move_file(options["src"], f, options["archive"], f):
-				# add the remote file to the to_remote list
+				# add the remote file to the to_remove list
 				to_remove.append(f)
 			# add watched indicator file to to_remove list
 				to_remove.append(f + ".t")
 
 		# remove extra remote files first (perhaps need the space)
+		check_dirs = []
+		uri_parts = self.split_uri(options["dst"])
 		for f in sorted(to_remove, reverse=True):
 			if self.remove(options["dst"], f):
 				self.status("")
@@ -320,6 +325,16 @@ class SmartSync:
 				self.status("")
 				self.feedback("Remove remote: %s" % (f))
 				self.show_fail()
+			if uri_parts["protocol"] == "file":
+				fdir = os.path.join(os.path.dirname(f))
+			else:
+				fdir = "/".join(f.split("/")[:-1])
+			if check_dirs.count(fdir) == 0:
+				check_dirs.append(fdir)
+		# TODO: check on empty dirs at destination
+		#self.feedback("Checking for empty dirs at dest...\n")
+		#for d in check_dirs
+		#	contents = self.ls_R(
 		# copy missing remote files
 		self.overall_transfers["start"] = time.time()
 		print("Overall transfer size: " + str(self.overall_transfers["total"]))
@@ -467,13 +482,12 @@ class SmartSync:
 		test = ""
 		if self.dummy:
 			self.feedback("! Check local dir: %s\n" % (path))
-			return True
 		for part in parts:
 			if len(test) > 0: test += os.sep
 			test += part
 			if not os.path.isdir(test):
 				try:
-					os.path.mkdir(test)
+					os.mkdir(test)
 				except Exception as e:
 					self.set_last_error("Unable to make dir %s" % test, e)
 					return False
@@ -754,6 +768,10 @@ class SmartSync:
 				self.set_last_error("filesize: can't stat %s%s%s" % (base_uri, os.sep, relative_path), e)
 				return 0
 		elif uri_parts["protocol"] == "ftp":
+# look for cached size
+			size_key = "%s|%s|%s|%s/%s" % (uri_parts["user"], uri_parts["password"], uri_parts["host"], uri_parts["path"], relative_path)
+			if list(self.ftp_size_cache.keys()).count(size_key) > 0:
+				return self.ftp_size_cache[size_key]
 			ftp = self.mkftp2(uri_parts)
 			if ftp == None:
 				self.set_last_error("filesize: can't get ftp object for %s/%s" % (base_uri, relative_path), None)
@@ -801,8 +819,22 @@ class SmartSync:
 			thisdir = stack.pop(0)
 			self.feedback("Listing remote dir: %s" % (thisdir))
 			ftp.cwd("/")
+			# nlst method
 			contents = sorted(ftp.nlst(thisdir))
-			#print("\ncontents: " + str(contents))
+			# dir method; try to cache file sizes
+			#self.last_listing = []
+			#ftp.dir(thisdir, self.catch_dir)
+			#contents = []
+			for l in self.last_listing:
+				parts = self.get_non_empty(l.split(" "))
+				fsize = int(parts[4])
+				year_or_time = parts[7]
+				pos = l.find(year_or_time) + len(year_or_time)
+				fpath = l[pos:]
+				fpath = fpath.lstrip()
+				contents.append(fpath)
+				size_key = "%s|%s|%s|%s/%s" % (uri_parts["user"], uri_parts["password"], uri_parts["host"], thisdir, fpath)
+				self.ftp_size_cache[size_key] = fsize
 			for f in contents:
 				items += 1
 				#print("%i: %s" % (items, f))
@@ -815,6 +847,7 @@ class SmartSync:
 						else:
 							ret.append(path[len(uri_parts["path"])+1:])
 					stack.append(path)
+					stack = sorted(stack)
 					#print("\nstack: " + str(stack))
 				else:
 					#print("\nrfile: %s" % f)
