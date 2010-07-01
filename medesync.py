@@ -258,7 +258,7 @@ class SmartSync:
 					to_remove.append(f + ".t")
 				# remove orphaned watched file indicators
 				dotparts = f.split(".")
-				if dotparts[-1] == "t" and remote_files.count(".".join(dotparts)) == 0:
+				if dotparts[-1] == "t" and remote_files.count(".".join(dotparts[:-1])) == 0:
 					to_remove.append(f)
 			tmp = []
 			# remove watched markers from remote listing
@@ -303,6 +303,9 @@ class SmartSync:
 		self.show_ok()
 		if len(to_remove) == 0 and len(to_copy) == 0 and len(to_archive) == 0:
 			self.status("%s up to date\n" % (options["dst"]))
+			# check on empty dirs at dest
+			self.cleanup(options["src"], local_files, "src")
+			self.cleanup(options["dst"], remote_files, "dst")
 			return True
 		# archive watched files; push these files onto the to_remove stack
 		for f in to_archive:
@@ -314,7 +317,6 @@ class SmartSync:
 				to_remove.append(f + ".t")
 
 		# remove extra remote files first (perhaps need the space)
-		check_dirs = []
 		uri_parts = self.split_uri(options["dst"])
 		for f in sorted(to_remove, reverse=True):
 			if self.remove(options["dst"], f):
@@ -329,12 +331,7 @@ class SmartSync:
 				fdir = os.path.join(os.path.dirname(f))
 			else:
 				fdir = "/".join(f.split("/")[:-1])
-			if check_dirs.count(fdir) == 0:
-				check_dirs.append(fdir)
-		# TODO: check on empty dirs at destination
-		#self.feedback("Checking for empty dirs at dest...\n")
-		#for d in check_dirs
-		#	contents = self.ls_R(
+
 		# copy missing remote files
 		self.overall_transfers["start"] = time.time()
 		print("Overall transfer size: " + str(self.overall_transfers["total"]))
@@ -349,11 +346,28 @@ class SmartSync:
 				self.status("")
 				self.feedback("Copy file: %s" % (f))
 				self.show_fail()
-		# archive src files which have disappeared from the dst, if required
-		if list(options.keys()).count("archive") > 0:
-			pass
-	print("")
+
+		self.cleanup(options["dst"], remote_files, "dst")
+		self.cleanup(options["src"], local_files, "src")
+		print("")
 #>>>
+	def cleanup(self, uri_base, listing, location):
+		self.feedback("Checking for empty %s dirs...\n" % (location))
+		rsorted = sorted(listing, reverse=True)
+		for f in rsorted:
+			if self.isdir(uri_base, f):
+				idx = rsorted.index(f)
+				if idx > 0:
+					try:
+						if (rsorted[idx-1].index(f) == 0):
+							continue
+					except Exception as e:
+						self.feedback("Remove empty %s dir: %s" % (location, f))
+						if self.remove(uri_base, f):
+							self.show_ok()
+						else:
+							self.show_fail()
+
 	def move_file(self, uri_from, relative_from, uri_to, relative_to):
 		uri_parts_from = self.split_uri(uri_from)
 		uri_parts_to = self.split_uri(uri_to)
@@ -428,22 +442,29 @@ class SmartSync:
 				return False
 			return self.is_ftp_dir(ftp, fullpath)
 
-	def remove(self, uri_base, relative_path):#<<<
+	def remove(self, uri_base, relative_path = ""):#<<<
 		if self.dummy:
 			return True
 		uri_parts = self.split_uri(uri_base)
+		pathtype = "path"
 		if uri_parts["protocol"] == "file":
 			try:
-				f = os.path.sep.join([uri_parts["path"], relative_path])
+				if len(relative_path) > 0:
+					f = os.path.sep.join([uri_parts["path"], relative_path])
+				else:
+					f = uri_parts["path"]
 				if self.dummy:
 					self.feedback("local remove: %s" % (f))
 				else:
 					if os.path.isdir(f):
+						pathtype = "dir"
 						os.rmdir(f)
 					else:
+						pathtype = "file"
 						os.remove(f)
+				return True
 			except Exception as e:
-				self.set_last_error("Unable to remove file %s" % uri_parts["path"], e)
+				self.set_last_error("Unable to remove %s %s" % (pathtype, uri_parts["path"]), e)
 				return False
 		elif uri_parts["protocol"] == "ftp":
 			ftp = self.mkftp2(uri_parts)
@@ -456,14 +477,16 @@ class SmartSync:
 				else:
 					f_sane = f #self.sanitise_ftp_path(f)
 					if self.is_ftp_dir(ftp, f_sane):
+						pathtype = "dir"
 						ftp.cwd("/")
 						ftp.rmd(f)
 					else:
+						pathtype = "file"
 						if self.filesize(uri_base, relative_path) > -1:
 							ftp.delete(f_sane)
 				return True
 			except Exception as e:
-				self.set_last_error("Unable to remove file %s :: %s" % (uri_base, relative_path), e)
+				self.set_last_error("Unable to remove %s %s" % (pathtype, f), e)
 				return False
 		else:
 			return False
@@ -693,6 +716,9 @@ class SmartSync:
 		sys.stdout.flush()
 #>>>
 	def ls_R_local(self, dirname, include_dirs=False, prepend_dirname = True): #<<<
+		if not os.path.isdir(dirname):
+			print("%s: dir not found" % (dirname))
+			sys.exit(1)
 		self.feedback("Listing local dir: %s" % (dirname))
 		stack = [dirname]
 		ret = []
