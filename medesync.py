@@ -902,24 +902,22 @@ class SmartSync:
 
 if __name__ == "__main__":
 	opts = Options()
-  #def add_opt(self, opt, help = "(no help)", aliases = [], consumes = 0, 
-  #    consumes_help = "", default="", short_help="", required=False, datatype="string"):
-	opts.add_opt("-s", help = "Source directory", aliases=["-src", "--src"], consumes = 1, \
-		consumes_help = "<source url/path>", required = True)
-	opts.add_opt("-d", help="Destination directory", aliases=["-dst", "--dst"], consumes=1, \
-		consumes_help="<destination url/path>", required=True)
-	opts.add_opt("-a", help="Files which have been copied in a previous run and are now "\
+	opts.AddOpt("-s", help = "Source directory", aliases=["-src", "--src"], consumes = 1, \
+		ConsumesHelp = "<source url/path>", required = True)
+	opts.AddOpt("-d", help="Destination directory", aliases=["-dst", "--dst"], consumes=1, \
+		ConsumesHelp="<destination url/path>", required=True)
+	opts.AddOpt("-a", help="Files which have been copied in a previous run and are now "\
 													+ "found to be missing are archived to this location", \
-													short_help="Archive location", aliases=["-archive", "--archive"], consumes=1, \
+													ShortHelp="Archive location", aliases=["-archive", "--archive"], consumes=1, \
 													required=False)
-	opts.add_opt("-dummy", help="Prints out information about what would be done, but doesn't actually do it", \
-		aliases = ["--dummy"], consumes=0,short_help="Dummy run")
-	opts.add_opt("-i", "Regular expression to match source and destination paths not to bother synchronising" \
+	opts.AddOpt("-dummy", help="Prints out information about what would be done, but doesn't actually do it", \
+		aliases = ["--dummy"], consumes=0,ShortHelp="Dummy run")
+	opts.AddOpt("-i", "Regular expression to match source and destination paths not to bother synchronising" \
 											+ " (default matches watched indicator files on mede8er players)", \
-		aliases = ["-ignore", "--ignore"], consumes=1, short_help="Ignore paths matching regex",\
-			default=".*\\.t$", consumes_help = "<regular expression>")
-	opts.parseargs()
-	if opts.required_missing():
+		aliases = ["-ignore", "--ignore"], consumes=1, ShortHelp="Ignore paths matching regex",\
+			Default=".*\\.t$", ConsumesHelp = "<regular expression>")
+	opts.ParseArgs()
+	if opts.RequiredMissing():
 		sys.exit(1)
 
 	f = SmartSync()
