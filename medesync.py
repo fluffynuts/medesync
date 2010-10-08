@@ -741,25 +741,29 @@ class SmartSync:
 		stack = [dirname]
 		ret = []
 		items = 0
-		while stack:
-			thisdir = stack.pop(0)
-			for f in sorted(os.listdir(thisdir)):
-				items += 1
-				path = os.path.join(thisdir, f)
-				if os.path.isdir(path):
-					if include_dirs:
-						if prepend_dirname:
-							ret.append(path)
-						else:
-							ret.append(path[len(dirname)+1:])
-					stack.append(path)
-					continue
-				if prepend_dirname:
-					ret.append(path)
-				else:
-					ret.append(path[len(dirname)+1:])
-		self.show_ok()
-		return ret
+		try:
+			while stack:
+				thisdir = stack.pop(0)
+				for f in sorted(os.listdir(thisdir)):
+					items += 1
+					path = os.path.join(thisdir, f)
+					if os.path.isdir(path):
+						if include_dirs:
+							if prepend_dirname:
+								ret.append(path)
+							else:
+								ret.append(path[len(dirname)+1:])
+						stack.append(path)
+						continue
+					if prepend_dirname:
+						ret.append(path)
+					else:
+						ret.append(path[len(dirname)+1:])
+			self.show_ok()
+			return ret
+		except Exception as e:
+			print("local ls error: %s" % str(e))
+			return None
 #>>>
 	def mkftp2(self, uri_parts):#<<<
 		return self.mkftp(uri_parts["host"],uri_parts["user"],uri_parts["password"],\
