@@ -212,13 +212,23 @@ class SmartSync:
 #>>>
 	def ls_R(self, path, include_dirs = False, prepend_dirname = True):#<<<
 		uri_parts = self.split_uri(path)
+		ret = None
 		if uri_parts["protocol"] == "file":
-			return self.ls_R_local(uri_parts["path"], include_dirs, prepend_dirname)
+			for i in range(10):
+				ret = self.ls_R_local(uri_parts["path"], include_dirs, prepend_dirname)
+				if ret != None:
+					return ret
+				time.sleep(1)
 		elif uri_parts["protocol"] == "ftp":
-			return self.ls_R_ftp(uri_parts, include_dirs, prepend_dirname)
+			for i in range(10):
+				ret = self.ls_R_ftp(uri_parts, include_dirs, prepend_dirname)
+				if ret != None:
+					return ret
+				time.sleep(1)
 		else:
 			print("Can't ls-r on %s" % (path))
-			return []
+			return None
+		return ret
 #>>>
 	def resolvebool(self, opts, key, default):#<<<
 		if list(opts.keys()).count(key) > 0:
@@ -227,6 +237,8 @@ class SmartSync:
 			return default
 #>>>
 	def remove_ignored(self, l, regex):#<<<*/
+		if l == None:
+			return None
 		if len(regex) == 0:
 			return l
 		out = []
@@ -246,8 +258,14 @@ class SmartSync:
 			self.feedback("! Dummy operation !\n")
 		# get a listing of all files and dirs under local_src
 		local_files = self.remove_ignored(self.ls_R(options["src"], True, False), options["ignore"])
+		if local_files == None:
+			return False
+		
 		# get a listing of all files and dirs under remote_dst
+		remote_files = None
 		remote_files = self.ls_R(options["dst"], True, False)
+		if remote_files == None:
+			return False
 		if options["archive"] != None:
 			watched_files = []
 			for f in remote_files:
@@ -837,7 +855,7 @@ class SmartSync:
 			uri_parts["password"], uri_parts["port"], uri_parts["timeout"], \
 			uri_parts["passive"])
 		if ftp == None:
-			return[]
+			return None
 		stack = [uri_parts["path"]]
 		ret = []
 		items = 0
