@@ -34,6 +34,7 @@ import sys
 import ftplib
 import time
 import re
+import datetime
 from opts import Options
 
 try:
@@ -70,6 +71,7 @@ class SmartSync:
 		self.status_ticks = 0
 		self.attempts = 120
 		self.ftp_size_cache = dict()
+		self.logfp = sys.stdout
 #>>>
 	def __deinit__(self):#<<<*/
 		for conn in self.ftp_conns:
@@ -87,7 +89,14 @@ class SmartSync:
 		self.spinner = spinchars[idx]
 		return self.spinner
 #>>>*/
+	def _print(self, s):#<<<*/
+		if self.logfp != sys.stdout:
+			self.logfp.write(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:S "))
+		self.logfp.write("%s\n" % s)
+#>>>*/
 	def get_terminal_size(self):#<<<*/
+		if self.logfp != sys.stdout:
+			return 0, 0
 		global COLS
 		if COLS != None:
 			return COLS, 25
@@ -95,7 +104,6 @@ class SmartSync:
 			try:
 				cr = struct.unpack('hh', fcntl.ioctl(fd, termios.TIOCGWINSZ, '1234'))
 			except:
-				print("FAIL")
 				return None
 			return cr
 		cr = ioctl_GWINSZ(0) or ioctl_GWINSZ(1) or ioctl_GWINSZ(2)
@@ -118,7 +126,7 @@ class SmartSync:
 		self.__err__["description"] = descr
 		self.__err__["exception"] = err
 		if self.show_status:
-			print("%s:\n  %s" % (descr, str(err)))
+			self._print("%s:\n  %s" % (descr, str(err)))
 #>>>
 	def feedback(self, fstr):#<<<
 		self.cols, tmp = self.get_terminal_size()
@@ -128,16 +136,18 @@ class SmartSync:
 			if fstr.count("\n") == 0:
 				while (len(fstr) < maxlen):
 					fstr += " "
-			sys.stdout.write(fstr)
-			sys.stdout.flush()
+			if self.logfp != sys.stdout:
+				self.logfp.write(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S "))
+			self.logfp.write(fstr)
+			self.logfp.flush()
 #>>>
 	def show_ok(self):#<<<
 		if self.show_status:
-			print("[ OK ]")
+			self.logfp.write("[ OK ]\n")
 	#>>>
 	def show_fail(self):#<<<
 		if self.show_status:
-			print("[FAIL]")
+			self.logfp.write("[FAIL]\n")
 #>>>
 	def get_last_error(self):#<<<
 		if self.__err__ != None:
@@ -226,7 +236,7 @@ class SmartSync:
 					return ret
 				time.sleep(1)
 		else:
-			print("Can't ls-r on %s" % (path))
+			self._print("Can't ls-r on %s" % (path))
 			return None
 		return ret
 #>>>
@@ -289,11 +299,16 @@ class SmartSync:
 		#		also create a list of all files missing from src (to del)
 		idx = 0
 		total_files = len(local_files)
+		mentioned_calc = False
 		for f in local_files:
 			spinner = self.spin()
 			perc = (idx * 100.0) / total_files
 			idx += 1
-			self.status("Calculating workload [ %2i %%] %s" % (perc, spinner))
+			if self.logfp == sys.stdout:
+				self.status("Calculating workload [ %2i %%] %s" % (perc, spinner))
+			elif not mentioned_calc:
+				self.feedback("Calculating workload...")
+				mentioned_calc = True
 			if self.isdir(options["src"], f):
 				continue
 			src_size = self.filesize(options["src"], f)
@@ -301,7 +316,7 @@ class SmartSync:
 				self.overall_transfers["total"] += src_size
 				if self.dummy:
 					self.status("")
-					print("Missing: %s" % f)
+					self._print("Missing: %s" % f)
 				to_copy.append(f)
 				continue
 			dst_size = self.filesize(options["dst"], f)
@@ -310,14 +325,16 @@ class SmartSync:
 			if src_size != dst_size:
 				if self.dummy:
 					self.status("")
-					print("%s: %i vs %i" % (f, src_size, dst_size))
+					self._print("%s: %i vs %i" % (f, src_size, dst_size))
 				self.overall_transfers["total"] += src_size
 				to_copy.append(f)
 		for f in remote_files:
 			if local_files.count(f) == 0:
 				to_remove.append(f)
 		self.status("")
-		self.feedback("Calculating workload")
+		if self.logfp == sys.stdout:
+# leave the line clear of a percentage
+			self.feedback("Calculating workload")
 		self.show_ok()
 		if len(to_remove) == 0 and len(to_copy) == 0 and len(to_archive) == 0:
 			self.status("%s up to date\n" % (options["dst"]))
@@ -352,7 +369,7 @@ class SmartSync:
 
 		# copy missing remote files
 		self.overall_transfers["start"] = time.time()
-		print("Overall transfer size: " + str(self.overall_transfers["total"]))
+		self._print("Overall transfer size: " + str(self.overall_transfers["total"]))
 		for f in to_copy:
 			if self.isdir(options["src"], f):
 				continue
@@ -367,7 +384,7 @@ class SmartSync:
 
 		self.cleanup(options["dst"], remote_files, "dst")
 		self.cleanup(options["src"], local_files, "src")
-		print("")
+		self._print("")
 #>>>
 	def cleanup(self, uri_base, listing, location):
 		self.feedback("Checking for empty %s dirs...\n" % (location))
@@ -392,19 +409,19 @@ class SmartSync:
 		self.feedback("Archiving %s" % (relative_from))
 		if uri_parts_from["protocol"] != uri_parts_to["protocol"]:
 			self.show_fail()
-			print("(Can't move files across protocols)")
+			self._print("(Can't move files across protocols)")
 			return False
 		if uri_parts_to["protocol"] == "ftp":
 			dirname = "/".join(relative_to.split("/")[:-1])
 			if not self.ensure_dir_exists(uri_to, dirname):
 				self.show_fail()
-				print("(Can't make dest dir at %s)" % (dirname))
+				self._print("(Can't make dest dir at %s)" % (dirname))
 				return False
 			try:
 				ftp = self.mkftp2(uri_parts_to)
 				if ftp == None:
 					self.show_fail()
-					print("(Can't get FTP connection)")
+					self._print("(Can't get FTP connection)")
 					return False
 				if not self.dummy:
 					ftp.rename(relative_from, relative_to)
@@ -412,7 +429,7 @@ class SmartSync:
 				return True
 			except Exception as e:
 				self.show_fail()
-				print("Can't move file %s at ftp://%s to %s: %s" % (relative_from, uri_parts_to["host"], relative_to, str(e)))
+				self._print("Can't move file %s at ftp://%s to %s: %s" % (relative_from, uri_parts_to["host"], relative_to, str(e)))
 				return False
 		elif uri_parts_to["protocol"] == "file":
 			dirname = os.sep.join(relative_to.split(os.sep)[:-1])
@@ -420,13 +437,13 @@ class SmartSync:
 			_to = os.path.join(uri_to, relative_to)
 			if not self.ensure_dir_exists(uri_to, dirname):
 				self.show_fail()
-				print("Can't make dest dir at %s" % (dirname))
+				self._print("Can't make dest dir at %s" % (dirname))
 				return False
 			try:
 				if not self.dummy:
 					os.rename(_from, _to)
 				else:
-					print("\nrename: %s => %s" % (_from, _to))
+					self._print("\nrename: %s => %s" % (_from, _to))
 				self.show_ok()
 				return True
 			except Exception as e:
@@ -437,11 +454,11 @@ class SmartSync:
 					self.show_ok()
 					return True
 				except Exception as e:
-					print("Can't copy-and-del %s to %s: %s" % (_from, _to, str(e)))
+					self._print("Can't copy-and-del %s to %s: %s" % (_from, _to, str(e)))
 					self.show_fail()
 					return False
 		else:
-			print("%s: unsupported protocol for file_move" % (uri_parts_to["protocol"]))
+			self._print("%s: unsupported protocol for file_move" % (uri_parts_to["protocol"]))
 			# unsupported protocol
 			return False
 
@@ -560,6 +577,9 @@ class SmartSync:
 		return True	
 #>>>
 	def show_progress(self, label, fraction):
+		if logfp != sys.stdout:
+			# log file doesn't get progress bar
+			return
 		cols, rows = self.get_terminal_size()
 		label = self.shorten(label, int(float(cols) * 0.90))
 		rem = cols - len(label) - 4
@@ -590,10 +610,10 @@ class SmartSync:
 			elif up_dst["protocol"] == "ftp":
 				return self.copy_file_local_to_ftp(src_base, dst_base, relative_path)
 		elif up_src["protocol"] == "ftp":
-			print("FTP source not supported (yet)")
+			self._print("FTP source not supported (yet)")
 			return False
 		else:
-			print("Protocol %s not supported (yet)" % up_src["protocol"])
+			self._print("Protocol %s not supported (yet)" % up_src["protocol"])
 			return False
 #>>>
 	def copy_file_local_to_ftp(self, src, dst, rel):#<<<
@@ -603,16 +623,18 @@ class SmartSync:
 			uri_parts = self.split_uri(dstpath)
 			if self.dummy:
 				self.feedback("! copy: %s\n" % (rel))
-				print("! dst:  %s\n" % uri_parts["path"])
+				self._print("! dst:  %s\n" % uri_parts["path"])
 				return True
 			ftp = self.mkftp2(uri_parts)
-			ftp.cwd("/")
 			if ftp == None:
-				print("Can't copy %s: Can't get ftp object")
 				return False
+			if ftp == None:
+				self._print("Can't copy %s: Can't get ftp object")
+				return False
+			ftp.cwd("/")
 			parentdir = "/".join(rel.split("/")[:-1])
 			if not self.ensure_dir_exists(dst, parentdir):
-				print("Can't make dir %s" % (parentdir))
+				self._print("Can't make dir %s" % (parentdir))
 			try:
 				self.current_transfer["total"] = os.stat(srcpath).st_size
 				self.current_transfer["start"] = time.time()
@@ -630,7 +652,7 @@ class SmartSync:
 				self.current_transfer["name"] = uri_parts["path"].split("/")[-1]
 				if self.current_transfer["total"] > 0:
 					fpsrc = open(srcpath, "rb")
-					#print("STOR %s" % (uri_parts["path"].replace(" ", "%20")))
+					#self._print("STOR %s" % (uri_parts["path"].replace(" ", "%20")))
 					ftp.cwd("/")
 					ftp.storbinary("STOR %s" % (uri_parts["path"]), fpsrc, self.io_chunk, self.ftp_status)
 					fpsrc.close()
@@ -638,9 +660,9 @@ class SmartSync:
 			except Exception as e:
 				if Exception == KeyboardInterrupt:
 					sys.exit(1)
-				print("Can't copy %s: %s" % (rel, str(e)))
+				self._print("Can't copy %s: %s" % (rel, str(e)))
 			time.sleep(1)
-		print("Giving up on %s" % (rel))
+		self._print("Giving up on %s" % (rel))
 		return False
 
 	def humanreadable(self, b, s):
@@ -687,7 +709,7 @@ class SmartSync:
 		srcpath = os.path.join(src, rel)
 		dstpath = os.path.join(dst, rel)
 		if not self.ensure_dir_exists(dst, os.path.dirname(rel)):
-			print("Can't make dir: %s" % (os.path.dirname(dstpath)))
+			self._print("Can't make dir: %s" % (os.path.dirname(dstpath)))
 			return False
 		try:
 			fpsrc = fopen(srcpath, "rb")
@@ -704,10 +726,15 @@ class SmartSync:
 			self.show_ok()
 			return True
 		except Exception as e:
-			print("Copy %s fails: %s" % (rel, str(e)))
+			self._print("Copy %s fails: %s" % (rel, str(e)))
 			return False
 #>>>
 	def shorten(self, checkstr, maxlen = None):#<<<
+		if self.logfp != sys.stdout:
+			if len(checkstr) and checkstr[-1] != "\n":
+				return checkstr + " "
+			else:
+				return checkstr
 		if maxlen == None:
 			maxlen, rows = self.get_terminal_size()
 		if len(checkstr) >= maxlen:
@@ -721,21 +748,28 @@ class SmartSync:
 			return
 #>>>
 	def status(self, statusstr, autofit = True):#<<<
-		if not self.show_status:
+		if not self.show_status or self.logfp != sys.stdout:
 			return
 		cols, rows = self.get_terminal_size()
 		if autofit:
 			statusstr = self.shorten(statusstr)
-		sys.stdout.write("\r%s\r%s" % ((cols * " "), statusstr))
-		sys.stdout.flush()
+		if logfp == sys.stdout:
+			logfp.write("\r%s\r%s" % ((cols * " "), statusstr))
+		else:
+			logfp.write(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S "))
+			logfp.write("%s" % (statusstr))
+		logfp.flush()
 #>>>
 	def clear_status(self): #<<<
-		sys.stdout.write("\r%s\r" % (78 * " "))
-		sys.stdout.flush()
+		if logfp == sys.stdout:
+			logfp.write("\r%s\r" % (78 * " "))
+		else:
+			logfp.write("\n")
+		logfp.flush()
 #>>>
 	def ls_R_local(self, dirname, include_dirs=False, prepend_dirname = True): #<<<
 		if not os.path.isdir(dirname):
-			print("%s: dir not found" % (dirname))
+			self._print("%s: dir not found" % (dirname))
 			sys.exit(1)
 		self.feedback("Listing local dir: %s" % (dirname))
 		stack = [dirname]
@@ -762,7 +796,7 @@ class SmartSync:
 			self.show_ok()
 			return ret
 		except Exception as e:
-			print("local ls error: %s" % str(e))
+			self._print("local ls error: %s" % str(e))
 			return None
 #>>>
 	def mkftp2(self, uri_parts):#<<<
@@ -885,10 +919,10 @@ class SmartSync:
 				self.ftp_size_cache[size_key] = fsize
 			for f in contents:
 				items += 1
-				#print("%i: %s" % (items, f))
+				#self._print("%i: %s" % (items, f))
 				path = "/".join([thisdir, f])
 				if self.is_ftp_dir(ftp, path):
-					#print("\nrdir: %s" % path)
+					#self._print("\nrdir: %s" % path)
 					if include_dirs:
 						if prepend_dirname:
 							ret.append(path)
@@ -896,9 +930,9 @@ class SmartSync:
 							ret.append(path[len(uri_parts["path"])+1:])
 					stack.append(path)
 					stack = sorted(stack)
-					#print("\nstack: " + str(stack))
+					#self._print("\nstack: " + str(stack))
 				else:
-					#print("\nrfile: %s" % f)
+					#self._print("\nrfile: %s" % f)
 					if prepend_dirname:
 						ret.append(path)
 					else:
@@ -938,6 +972,8 @@ if __name__ == "__main__":
 											+ " (default matches watched indicator files on mede8er players)", \
 		aliases = ["-ignore", "--ignore"], consumes=1, ShortHelp="Ignore paths matching regex",\
 			Default=".*\\.t$", ConsumesHelp = "<regular expression>")
+	opts.AddOpt("-l", help="Redirect logging to this file instead of stdout", \
+		aliases = ["--logfile"], consumes=1, ShortHelp = "Log file (instead of stdout)")
 	opts.ParseArgs()
 	if opts.RequiredMissing():
 		sys.exit(1)
@@ -957,8 +993,19 @@ if __name__ == "__main__":
 	#				"name":base, \
 	#				"dummy":False,
 	#				"ignore":".*\\.t$"}
+	if opts.selected("-l"):
+		try:
+			logfp = open(opts.value("-l"), "a")
+		except Exception as e:
+			print("Unable to open %s for appending; outputting to stdout instead" % opts.value("-l"))
+			print(str(e))
+			logfp = sys.stdout
 	try:
+		f.logfp = logfp
 		f.sync(cmdopts)
 	except KeyboardInterrupt:
-		print("\n>> user abort <<")
+		logfp.write("\n>> user abort <<\n")
+
+	if logfp != sys.stdout:
+		logfp.close()
 
