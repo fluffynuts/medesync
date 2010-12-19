@@ -577,7 +577,7 @@ class SmartSync:
 		return True	
 #>>>
 	def show_progress(self, label, fraction):
-		if logfp != sys.stdout:
+		if self.logfp != sys.stdout:
 			# log file doesn't get progress bar
 			return
 		cols, rows = self.get_terminal_size()
@@ -753,19 +753,19 @@ class SmartSync:
 		cols, rows = self.get_terminal_size()
 		if autofit:
 			statusstr = self.shorten(statusstr)
-		if logfp == sys.stdout:
-			logfp.write("\r%s\r%s" % ((cols * " "), statusstr))
+		if self.logfp == sys.stdout:
+			self.logfp.write("\r%s\r%s" % ((cols * " "), statusstr))
 		else:
-			logfp.write(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S "))
-			logfp.write("%s" % (statusstr))
-		logfp.flush()
+			self.logfp.write(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S "))
+			self.logfp.write("%s" % (statusstr))
+		self.logfp.flush()
 #>>>
 	def clear_status(self): #<<<
-		if logfp == sys.stdout:
-			logfp.write("\r%s\r" % (78 * " "))
+		if self.logfp == sys.stdout:
+			self.logfp.write("\r%s\r" % (78 * " "))
 		else:
-			logfp.write("\n")
-		logfp.flush()
+			self.logfp.write("\n")
+		self.logfp.flush()
 #>>>
 	def ls_R_local(self, dirname, include_dirs=False, prepend_dirname = True): #<<<
 		if not os.path.isdir(dirname):
@@ -993,6 +993,7 @@ if __name__ == "__main__":
 	#				"name":base, \
 	#				"dummy":False,
 	#				"ignore":".*\\.t$"}
+	logfp = sys.stdout
 	if opts.selected("-l"):
 		try:
 			logfp = open(opts.value("-l"), "a")
