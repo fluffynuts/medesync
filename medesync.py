@@ -343,13 +343,17 @@ class SmartSync:
 			self.cleanup(options["dst"], remote_files, "dst")
 			return True
 		# archive watched files; push these files onto the to_remove stack
+		print(to_archive)
 		for f in to_archive:
 			# perform local move (may be a rename, may be a copy-and-delete)
 			if self.move_file(options["src"], f, options["archive"], f):
 				# add the remote file to the to_remove list
-				to_remove.append(f)
+				if to_remove.count(f) == 0:
+					to_remove.append(f)
 			# add watched indicator file to to_remove list
-				to_remove.append(f + ".t")
+				w = f + ".t"
+				if to_remove.count(f) == 0:
+					to_remove.append(w)
 
 		# remove extra remote files first (perhaps need the space)
 		uri_parts = self.split_uri(options["dst"])
@@ -529,7 +533,7 @@ class SmartSync:
 	def ensure_dir_exists(self, uri_base, relative_path):#<<<
 		up = self.split_uri(uri_base)
 		if up["protocol"] == "file":
-			return self.ensure_dir_exists_local(os.sep.join([up["path"], relative_path]))
+			return self.ensure_dir_exists_local(os.path.dirname(os.sep.join([up["path"], relative_path])))
 		elif up["protocol"] == "ftp":
 			return self.ensure_dir_exists_ftp(up, relative_path)
 		else:
@@ -708,25 +712,32 @@ class SmartSync:
 			self.feedback("! copy: %s\n" % (rel))
 		srcpath = os.path.join(src, rel)
 		dstpath = os.path.join(dst, rel)
-		if not self.ensure_dir_exists(dst, os.path.dirname(rel)):
+		if not self.ensure_dir_exists_local(os.path.dirname(dstpath)):
 			self._print("Can't make dir: %s" % (os.path.dirname(dstpath)))
 			return False
 		try:
-			fpsrc = fopen(srcpath, "rb")
-			fpdst = fopen(dstpath, "wb")
-			total = os.stat(fpsrc).st_size
+			fpsrc = open(srcpath, "rb")
+			fpdst = open(dstpath, "wb")
+			total = os.stat(srcpath).st_size
 			transferred = 0
-			while not fpsrc.eof():
+			while transferred < total:
 				self.show_progress(rel, float(transferred) / float(total))
-				chunk = fpsrc.read(self.io_chunk)
+				toread = self.io_chunk
+				if (total - transferred) < toread:
+					toread = total-transferred
+				chunk = fpsrc.read(toread)
 				fpdst.write(chunk)
 				fpdst.flush()
-				transferred += self.io_chunk
+				transferred += toread
+			fpdst.close()
+			fpsrc.close()
 			self.feedback("Copy %s" % (rel))
 			self.show_ok()
 			return True
 		except Exception as e:
 			self._print("Copy %s fails: %s" % (rel, str(e)))
+			self._print(srcpath)
+			self._print(dstpath)
 			return False
 #>>>
 	def shorten(self, checkstr, maxlen = None):#<<<
@@ -853,6 +864,8 @@ class SmartSync:
 # look for cached size
 			size_key = "%s|%s|%s|%s/%s" % (uri_parts["user"], uri_parts["password"], uri_parts["host"], uri_parts["path"], relative_path)
 			if list(self.ftp_size_cache.keys()).count(size_key) > 0:
+				if self.dummy:
+					print("filesize: returning cached value")
 				return self.ftp_size_cache[size_key]
 			ftp = self.mkftp2(uri_parts)
 			if ftp == None:
@@ -864,9 +877,16 @@ class SmartSync:
 				path = self.sanitise_ftp_path("/".join([uri_parts["path"], relative_path]))
 				ftp.dir(path, self.catch_dir)
 				if len(self.last_listing) == 0:
+					if self.dummy:
+						print("Unable to list on:\n%s" % (path))
 					return 0
 				parts = self.get_non_empty(self.last_listing[0].split(" "))
 				self.last_listing = []
+				if self.dummy and int(parts[4]) == 0:
+					print("zero ret, parts:")
+					print(parts)
+					print("full ret:")
+					print(self.last_listing)
 				return int(parts[4])
 				#return ftp.size("/".join([uri_parts["path"], relative_path]))
 			#except Exception as e:
@@ -876,7 +896,7 @@ class SmartSync:
 			return -1
 
 	def sanitise_ftp_path(self, p):
-		return p.replace("[", "\[").replace("]", "\]")
+		return p.replace("[", "\\[").replace("]", "\\]")
 
 	def catch_dir(self, line):
 		self.last_listing.append(line)
@@ -996,7 +1016,8 @@ if __name__ == "__main__":
 	logfp = sys.stdout
 	if opts.selected("-l"):
 		try:
-			logfp = open(opts.value("-l"), "a")
+			if opts.value("-l") != "stdout":
+				logfp = open(opts.value("-l"), "a")
 		except Exception as e:
 			print("Unable to open %s for appending; outputting to stdout instead" % opts.value("-l"))
 			print(str(e))
