@@ -258,6 +258,19 @@ class SmartSync:
 				out.append(f)
 		return out
 #>>>*/
+	def remove_hidden(self, ls, base):
+		uri_parts = self.split_uri(base)
+		sep = os.sep
+		if uri_parts["protocol"] != "file":
+			sep = "/"
+		out = []
+		for f in ls:
+			parts = f.split(sep)
+			if len(parts[-1]) and parts[-1][0] == ".":
+				continue
+			out.append(f)
+		return out
+			
 	def sync(self, options):#<<<
 		self.dummy = self.resolvebool(options, "dummy", False)
 		self.overwrite = self.resolvebool(options, "overwrite", True)
@@ -274,6 +287,9 @@ class SmartSync:
 		# get a listing of all files and dirs under remote_dst
 		remote_files = None
 		remote_files = self.ls_R(options["dst"], True, False)
+		if not options["includehidden"]:
+			local_files = self.remove_hidden(local_files, options["src"])
+			remote_files = self.remove_hidden(remote_files, options["dst"])
 		if remote_files == None:
 			return False
 		if options["archive"] != None:
@@ -390,7 +406,7 @@ class SmartSync:
 		self.cleanup(options["src"], local_files, "src")
 		self._print("")
 #>>>
-	def cleanup(self, uri_base, listing, location):
+	def cleanup(self, uri_base, listing, location):#<<<*/
 		self.feedback("Checking for empty %s dirs...\n" % (location))
 		rsorted = sorted(listing, reverse=True)
 		for f in rsorted:
@@ -406,8 +422,8 @@ class SmartSync:
 							self.show_ok()
 						else:
 							self.show_fail()
-
-	def move_file(self, uri_from, relative_from, uri_to, relative_to):
+#>>>*/
+	def move_file(self, uri_from, relative_from, uri_to, relative_to):#<<<*/
 		uri_parts_from = self.split_uri(uri_from)
 		uri_parts_to = self.split_uri(uri_to)
 		self.feedback("Archiving %s" % (relative_from))
@@ -439,7 +455,8 @@ class SmartSync:
 			dirname = os.sep.join(relative_to.split(os.sep)[:-1])
 			_from = os.path.join(uri_from, relative_from)
 			_to = os.path.join(uri_to, relative_to)
-			if not self.ensure_dir_exists(uri_to, dirname):
+			dirname = os.path.dirname(_to)
+			if not self.ensure_dir_exists_local(dirname):
 				self.show_fail()
 				self._print("Can't make dest dir at %s" % (dirname))
 				return False
@@ -465,8 +482,8 @@ class SmartSync:
 			self._print("%s: unsupported protocol for file_move" % (uri_parts_to["protocol"]))
 			# unsupported protocol
 			return False
-
-	def isdir(self, uri_base, relative_path):
+#>>>*/
+	def isdir(self, uri_base, relative_path):#<<<*/
 		uri_parts = self.split_uri(uri_base)
 		if uri_parts["protocol"] == "file":
 			sep = os.sep
@@ -480,7 +497,7 @@ class SmartSync:
 			if ftp == None:
 				return False
 			return self.is_ftp_dir(ftp, fullpath)
-
+#>>>*/
 	def remove(self, uri_base, relative_path = ""):#<<<
 		if self.dummy:
 			return True
@@ -547,9 +564,15 @@ class SmartSync:
 		for part in parts:
 			if len(test) > 0: test += os.sep
 			test += part
+			if self.dummy:
+				print("testing %s" % test)
 			if not os.path.isdir(test):
+				if self.dummy:
+					print("%s: dir doesn't exist" % test)
 				try:
 					os.mkdir(test)
+					if self.dummy:
+						print("Ensured local dir '%s' exists!" % test)
 				except Exception as e:
 					self.set_last_error("Unable to make dir %s" % test, e)
 					return False
@@ -580,7 +603,7 @@ class SmartSync:
 					return False
 		return True	
 #>>>
-	def show_progress(self, label, fraction):
+	def show_progress(self, label, fraction):#<<<*/
 		if self.logfp != sys.stdout:
 			# log file doesn't get progress bar
 			return
@@ -598,7 +621,7 @@ class SmartSync:
 			rem -= 1
 		label += ((rem - bars) * " ")	+ "]"
 		self.status(label, False)
-
+#>>>*/
 	def copy_file(self, src_base, dst_base, relative_path):#<<<
 		up_src = self.split_uri(src_base)
 		up_dst = self.split_uri(dst_base)
@@ -852,7 +875,7 @@ class SmartSync:
 			self.set_last_error("Unable to connect to ftp://%s:%s@%s:%i" % (user, password, host, port), e)
 			return None
 		#>>>
-	def filesize(self, base_uri, relative_path):
+	def filesize(self, base_uri, relative_path):#<<<*/
 		uri_parts = self.split_uri(base_uri)
 		if uri_parts["protocol"] == "file":
 			try:
@@ -894,20 +917,20 @@ class SmartSync:
 				return 0
 		else:
 			return -1
-
-	def sanitise_ftp_path(self, p):
+#>>>*/
+	def sanitise_ftp_path(self, p):#<<<*/
 		return p.replace("[", "\\[").replace("]", "\\]")
-
-	def catch_dir(self, line):
+#>>>*/
+	def catch_dir(self, line):#<<<*/
 		self.last_listing.append(line)
-
-	def get_non_empty(self, l):
+#>>>*/
+	def get_non_empty(self, l):#<<<*/
 		out = []
 		for item in l:
 			if len(item) > 0:
 				out.append(item)
 		return out
-
+#>>>*/
 	def ls_R_ftp(self, uri_parts, include_dirs = False, prepend_dirname = True):#<<<
 		ftp = self.mkftp(uri_parts["host"], uri_parts["user"], \
 			uri_parts["password"], uri_parts["port"], uri_parts["timeout"], \
@@ -994,6 +1017,8 @@ if __name__ == "__main__":
 			Default=".*\\.t$", ConsumesHelp = "<regular expression>")
 	opts.AddOpt("-l", help="Redirect logging to this file instead of stdout", \
 		aliases = ["--logfile"], consumes=1, ShortHelp = "Log file (instead of stdout)")
+	opts.AddOpt("-h", help="Include hidden (dot-) files/dirs", aliases=["-include-hidden", "--include-hidden"], \
+		consumes = 0)
 	opts.ParseArgs()
 	if opts.RequiredMissing():
 		sys.exit(1)
@@ -1002,6 +1027,7 @@ if __name__ == "__main__":
 	cmdopts = dict()
 	cmdopts["src"] = opts.value("-s")
 	cmdopts["dst"] = opts.value("-d")
+	cmdopts["includehidden"] = opts.selected("-h")
 	if opts.selected("-a"):
 		cmdopts["archive"] = opts.value("-a")
 	else:
