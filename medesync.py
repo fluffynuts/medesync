@@ -259,6 +259,8 @@ class SmartSync:
 		return out
 #>>>*/
 	def remove_hidden(self, ls, base):
+		if ls == None:
+			status("Unable to remove hidden files from %s: listing failed" % (base))
 		uri_parts = self.split_uri(base)
 		sep = os.sep
 		if uri_parts["protocol"] != "file":
@@ -270,7 +272,6 @@ class SmartSync:
 				continue
 			out.append(f)
 		return out
-			
 	def sync(self, options):#<<<
 		self.dummy = self.resolvebool(options, "dummy", False)
 		self.overwrite = self.resolvebool(options, "overwrite", True)
