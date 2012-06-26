@@ -272,6 +272,7 @@ class SmartSync:
 				continue
 			out.append(f)
 		return out
+			
 	def sync(self, options):#<<<
 		self.dummy = self.resolvebool(options, "dummy", False)
 		self.overwrite = self.resolvebool(options, "overwrite", True)
@@ -360,7 +361,7 @@ class SmartSync:
 			self.cleanup(options["dst"], remote_files, "dst")
 			return True
 		# archive watched files; push these files onto the to_remove stack
-		print(to_archive)
+		#print(to_archive)
 		for f in to_archive:
 			# perform local move (may be a rename, may be a copy-and-delete)
 			if self.move_file(options["src"], f, options["archive"], f):
