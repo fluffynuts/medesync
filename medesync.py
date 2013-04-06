@@ -391,7 +391,9 @@ class SmartSync:
 
 		# copy missing remote files
 		self.overall_transfers["start"] = time.time()
-		self._print("Overall transfer size: " + str(self.overall_transfers["total"]))
+		totalBytes = self.overall_transfers["total"]
+		totalHuman = self.humanreadable_size(totalBytes)
+		self._print("Overall transfer size: %i (%s)" % (totalBytes, totalHuman))
 		for f in to_copy:
 			if self.isdir(options["src"], f):
 				continue
@@ -694,14 +696,18 @@ class SmartSync:
 		self._print("Giving up on %s" % (rel))
 		return False
 
-	def humanreadable(self, b, s):
-		suf = ["b", "Kb", "Mb"]
-		rate = float(b) / float(s)
+	def humanreadable_size(self, byteCount):
+		suf = ["b", "Kb", "Mb", "Gb", "Pb"]
 		for i in range(len(suf)):
-			if rate < 1024:
-				return "%.2f%s/s" % (rate, suf[i])
-			rate /= 1024.0
-		return "%.2f%s/s" % (rate, suf[-1])
+			if byteCount < 1024:
+				return "%.2f%s" % (byteCount, suf[i])
+			byteCount /= 1024.0
+		return "%.2f%s" % (byteCount, suf[-1])
+
+	def humanreadable_rate(self, b, s):
+		suf = ["b", "Kb", "Mb", "Gb", "Pb"]
+		rate = float(b) / float(s)
+		return "%s/s" % (self.humanreadable_size(rate))
 
 	def human_readable_time(self, secs):
 		s = secs % 60
@@ -724,7 +730,7 @@ class SmartSync:
 			return
 		self.last_progress = now
 		perc = float(self.current_transfer["bytes"]) / float(self.current_transfer["total"])
-		r = self.humanreadable(self.current_transfer["bytes"], (now - self.current_transfer["start"]))
+		r = self.humanreadable_rate(self.current_transfer["bytes"], (now - self.current_transfer["start"]))
 		rbytes = float(self.current_transfer["bytes"]) / (float(now - self.current_transfer["start"]))
 		#overall_r = float(self.overall_transfers["bytes"]) / (now - self.overall_transfers["start"])
 		etr = int((float(self.overall_transfers["total"] - self.overall_transfers["bytes"]) / rbytes))
