@@ -258,7 +258,7 @@ class SmartSync:
 				out.append(f)
 		return out
 #>>>*/
-	def remove_hidden(self, ls, base):
+	def remove_hidden(self, ls, base):#<<<*/
 		if ls == None:
 			status("Unable to remove hidden files from %s: listing failed" % (base))
 		uri_parts = self.split_uri(base)
@@ -272,7 +272,7 @@ class SmartSync:
 				continue
 			out.append(f)
 		return out
-			
+			#>>>*/
 	def sync(self, options):#<<<
 		self.dummy = self.resolvebool(options, "dummy", False)
 		self.overwrite = self.resolvebool(options, "overwrite", True)
@@ -820,21 +820,24 @@ class SmartSync:
 		try:
 			while stack:
 				thisdir = stack.pop(0)
-				for f in sorted(os.listdir(thisdir)):
-					items += 1
-					path = os.path.join(thisdir, f)
-					if os.path.isdir(path):
-						if include_dirs:
-							if prepend_dirname:
-								ret.append(path)
-							else:
-								ret.append(path[len(dirname)+1:])
-						stack.append(path)
-						continue
-					if prepend_dirname:
-						ret.append(path)
-					else:
-						ret.append(path[len(dirname)+1:])
+				try:
+					for f in sorted(os.listdir(thisdir)):
+						items += 1
+						path = os.path.join(thisdir, f)
+						if os.path.isdir(path):
+							if include_dirs:
+								if prepend_dirname:
+									ret.append(path)
+								else:
+									ret.append(path[len(dirname)+1:])
+							stack.append(path)
+							continue
+						if prepend_dirname:
+							ret.append(path)
+						else:
+							ret.append(path[len(dirname)+1:])
+				except:
+					pass
 			self.show_ok()
 			return ret
 		except Exception as e:
