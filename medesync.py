@@ -36,6 +36,7 @@ import time
 import re
 import datetime
 from opts import Options
+import shutil
 
 try:
 	import fcntl, termios, struct, os
@@ -273,6 +274,11 @@ class SmartSync:
 			out.append(f)
 		return out
 			#>>>*/
+	def is_videofile(self, path):
+		ext = os.path.splitext(path)[-1].lower()
+		video_extensions = [".mp4", ".mkv", ".m4v", ".avi", ".mpg", ".mpeg", ".wmv"]
+		return not video_extensions.count(ext) == 0
+
 	def sync(self, options):#<<<
 		self.dummy = self.resolvebool(options, "dummy", False)
 		self.overwrite = self.resolvebool(options, "overwrite", True)
@@ -347,8 +353,11 @@ class SmartSync:
 				self.overall_transfers["total"] += src_size
 				to_copy.append(f)
 		for f in remote_files:
-			if local_files.count(f) == 0:
-				to_remove.append(f)
+# TODO: remove non-video files if they are alone perhaps? Older than some age and alone?
+# MEGA-TODO: refactor!
+			if self.is_videofile(f):
+				if local_files.count(f) == 0:
+					to_remove.append(f)
 		self.status("")
 		if self.logfp == sys.stdout:
 # leave the line clear of a percentage
@@ -397,13 +406,12 @@ class SmartSync:
 		for f in to_copy:
 			if self.isdir(options["src"], f):
 				continue
+			self.feedback("Copy file: %s" % (f))
 			if self.copy_file(options["src"], options["dst"], f):
 				self.status("")
-				self.feedback("Copy file: %s" % (f))
 				self.show_ok()
 			else:
 				self.status("")
-				self.feedback("Copy file: %s" % (f))
 				self.show_fail()
 
 		self.cleanup(options["dst"], remote_files, "dst")
@@ -459,6 +467,10 @@ class SmartSync:
 			dirname = os.sep.join(relative_to.split(os.sep)[:-1])
 			_from = os.path.join(uri_from, relative_from)
 			_to = os.path.join(uri_to, relative_to)
+			if not os.path.isfile(_from):
+				if not os.path.isfile(_to):
+					self._print("Can't find %s; not copying what isn't there" % (_from))
+				return True
 			dirname = os.path.dirname(_to)
 			if not self.ensure_dir_exists_local(dirname):
 				self.show_fail()
@@ -554,6 +566,7 @@ class SmartSync:
 	def ensure_dir_exists(self, uri_base, relative_path):#<<<
 		up = self.split_uri(uri_base)
 		if up["protocol"] == "file":
+			#print(up)
 			return self.ensure_dir_exists_local(os.path.dirname(os.sep.join([up["path"], relative_path])))
 		elif up["protocol"] == "ftp":
 			return self.ensure_dir_exists_ftp(up, relative_path)
@@ -741,28 +754,14 @@ class SmartSync:
 	def copy_file_local_to_local(self, src, dst, rel):#<<<
 		if self.dummy:
 			self.feedback("! copy: %s\n" % (rel))
+			return True
 		srcpath = os.path.join(src, rel)
 		dstpath = os.path.join(dst, rel)
 		if not self.ensure_dir_exists_local(os.path.dirname(dstpath)):
 			self._print("Can't make dir: %s" % (os.path.dirname(dstpath)))
 			return False
 		try:
-			fpsrc = open(srcpath, "rb")
-			fpdst = open(dstpath, "wb")
-			total = os.stat(srcpath).st_size
-			transferred = 0
-			while transferred < total:
-				self.show_progress(rel, float(transferred) / float(total))
-				toread = self.io_chunk
-				if (total - transferred) < toread:
-					toread = total-transferred
-				chunk = fpsrc.read(toread)
-				fpdst.write(chunk)
-				fpdst.flush()
-				transferred += toread
-			fpdst.close()
-			fpsrc.close()
-			self.feedback("Copy %s" % (rel))
+			shutil.copyfile(srcpath, dstpath)
 			self.show_ok()
 			return True
 		except Exception as e:
@@ -871,6 +870,8 @@ class SmartSync:
 					return ftp
 				except:
 					ftp.close()
+					self.ftp_conns.remove(f)
+					ftp = None
 				break
 		try:
 			if ftp == None:

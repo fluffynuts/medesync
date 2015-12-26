@@ -371,7 +371,7 @@ class Options:
           force_newline = 1
         elif force_newline == 1:
           force_newline = 2
-        if len(word) and word[0] == "\"":
+        if len(word) and word[0] == "\"" and word.count("\"") == 1:
           # try to keep a quoted string together
           tmp = [word]
           for w in words[1:]:
