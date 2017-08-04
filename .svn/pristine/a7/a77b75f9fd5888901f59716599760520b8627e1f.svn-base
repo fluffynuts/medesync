@@ -36,7 +36,6 @@ import time
 import re
 import datetime
 from opts import Options
-import shutil
 
 try:
 	import fcntl, termios, struct, os
@@ -73,7 +72,6 @@ class SmartSync:
 		self.attempts = 120
 		self.ftp_size_cache = dict()
 		self.logfp = sys.stdout
-		self.no_remove = False
 #>>>
 	def __deinit__(self):#<<<*/
 		for conn in self.ftp_conns:
@@ -260,7 +258,7 @@ class SmartSync:
 				out.append(f)
 		return out
 #>>>*/
-	def remove_hidden(self, ls, base):#<<<*/
+	def remove_hidden(self, ls, base):
 		if ls == None:
 			status("Unable to remove hidden files from %s: listing failed" % (base))
 		uri_parts = self.split_uri(base)
@@ -274,20 +272,10 @@ class SmartSync:
 				continue
 			out.append(f)
 		return out
-			#>>>*/
-	def is_videofile(self, path):#<<<
-		ext = os.path.splitext(path)[-1].lower()
-		video_extensions = [".mp4", ".mkv", ".m4v", ".avi", ".mpg", ".mpeg", ".wmv"]
-		return not video_extensions.count(ext) == 0
-#>>>
-	def schedule_remove_item(self, to_remove, item):
-		if self.no_remove:
-				return
-		to_remove.append(item)
+			
 	def sync(self, options):#<<<
 		self.dummy = self.resolvebool(options, "dummy", False)
 		self.overwrite = self.resolvebool(options, "overwrite", True)
-		self.no_remove = self.resolvebool(options, "no-remove", False)
 		to_copy = []
 		to_remove = []
 		to_archive = []
@@ -295,8 +283,7 @@ class SmartSync:
 			self.feedback("! Dummy operation !\n")
 		# get a listing of all files and dirs under local_src
 		local_files = self.remove_ignored(self.ls_R(options["src"], True, False), options["ignore"])
-		if local_files == None or len(local_files) == 0:
-			print("can't list local files...")
+		if local_files == None:
 			return False
 		
 		# get a listing of all files and dirs under remote_dst
@@ -314,11 +301,11 @@ class SmartSync:
 					# add this file to the archive list
 					to_archive.append(f)
 					# add the watched indicator for this file to the remove list
-					self.schedule_remove_item(to_remove, f + '.t')
+					to_remove.append(f + ".t")
 				# remove orphaned watched file indicators
 				dotparts = f.split(".")
 				if dotparts[-1] == "t" and remote_files.count(".".join(dotparts[:-1])) == 0:
-					self.schedule_remove_item(to_remove, f)
+					to_remove.append(f)
 			tmp = []
 			# remove watched markers from remote listing
 			for f in remote_files:
@@ -360,11 +347,8 @@ class SmartSync:
 				self.overall_transfers["total"] += src_size
 				to_copy.append(f)
 		for f in remote_files:
-# TODO: remove non-video files if they are alone perhaps? Older than some age and alone?
-# MEGA-TODO: refactor!
-			if self.is_videofile(f):
-				if local_files.count(f) == 0:
-					self.schedule_remove_item(to_remove, f)
+			if local_files.count(f) == 0:
+				to_remove.append(f)
 		self.status("")
 		if self.logfp == sys.stdout:
 # leave the line clear of a percentage
@@ -373,6 +357,8 @@ class SmartSync:
 		if len(to_remove) == 0 and len(to_copy) == 0 and len(to_archive) == 0:
 			self.status("%s up to date\n" % (options["dst"]))
 			# check on empty dirs at dest
+			self.cleanup(options["src"], local_files, "src")
+			self.cleanup(options["dst"], remote_files, "dst")
 			return True
 		# archive watched files; push these files onto the to_remove stack
 		#print(to_archive)
@@ -381,11 +367,11 @@ class SmartSync:
 			if self.move_file(options["src"], f, options["archive"], f):
 				# add the remote file to the to_remove list
 				if to_remove.count(f) == 0:
-					self.schedule_remove_item(to_remove, f)
+					to_remove.append(f)
 			# add watched indicator file to to_remove list
 				w = f + ".t"
 				if to_remove.count(f) == 0:
-					self.schedule_remove_item(to_remove, f)
+					to_remove.append(w)
 
 		# remove extra remote files first (perhaps need the space)
 		uri_parts = self.split_uri(options["dst"])
@@ -411,15 +397,35 @@ class SmartSync:
 		for f in to_copy:
 			if self.isdir(options["src"], f):
 				continue
-			self.feedback("Copy file: %s" % (f))
 			if self.copy_file(options["src"], options["dst"], f):
 				self.status("")
+				self.feedback("Copy file: %s" % (f))
 				self.show_ok()
 			else:
 				self.status("")
+				self.feedback("Copy file: %s" % (f))
 				self.show_fail()
 
+		self.cleanup(options["dst"], remote_files, "dst")
+		self.cleanup(options["src"], local_files, "src")
 		self._print("")
+#>>>
+	def cleanup(self, uri_base, listing, location):#<<<*/
+		self.feedback("Checking for empty %s dirs...\n" % (location))
+		rsorted = sorted(listing, reverse=True)
+		for f in rsorted:
+			if self.isdir(uri_base, f):
+				idx = rsorted.index(f)
+				if idx > 0:
+					try:
+						if (rsorted[idx-1].index(f) == 0):
+							continue
+					except Exception as e:
+						self.feedback("Remove empty %s dir: %s" % (location, f))
+						if self.remove(uri_base, f):
+							self.show_ok()
+						else:
+							self.show_fail()
 #>>>*/
 	def move_file(self, uri_from, relative_from, uri_to, relative_to):#<<<*/
 		uri_parts_from = self.split_uri(uri_from)
@@ -453,10 +459,6 @@ class SmartSync:
 			dirname = os.sep.join(relative_to.split(os.sep)[:-1])
 			_from = os.path.join(uri_from, relative_from)
 			_to = os.path.join(uri_to, relative_to)
-			if not os.path.isfile(_from):
-				if not os.path.isfile(_to):
-					self._print("Can't find %s; not copying what isn't there" % (_from))
-				return True
 			dirname = os.path.dirname(_to)
 			if not self.ensure_dir_exists_local(dirname):
 				self.show_fail()
@@ -464,11 +466,7 @@ class SmartSync:
 				return False
 			try:
 				if not self.dummy:
-					try:
-						os.rename(_from, _to)
-					except Exception as e:
-						shutil.copyfile(_from, _to)
-						os.remove(_from)
+					os.rename(_from, _to)
 				else:
 					self._print("\nrename: %s => %s" % (_from, _to))
 				self.show_ok()
@@ -556,7 +554,6 @@ class SmartSync:
 	def ensure_dir_exists(self, uri_base, relative_path):#<<<
 		up = self.split_uri(uri_base)
 		if up["protocol"] == "file":
-			#print(up)
 			return self.ensure_dir_exists_local(os.path.dirname(os.sep.join([up["path"], relative_path])))
 		elif up["protocol"] == "ftp":
 			return self.ensure_dir_exists_ftp(up, relative_path)
@@ -744,14 +741,28 @@ class SmartSync:
 	def copy_file_local_to_local(self, src, dst, rel):#<<<
 		if self.dummy:
 			self.feedback("! copy: %s\n" % (rel))
-			return True
 		srcpath = os.path.join(src, rel)
 		dstpath = os.path.join(dst, rel)
 		if not self.ensure_dir_exists_local(os.path.dirname(dstpath)):
 			self._print("Can't make dir: %s" % (os.path.dirname(dstpath)))
 			return False
 		try:
-			shutil.copyfile(srcpath, dstpath)
+			fpsrc = open(srcpath, "rb")
+			fpdst = open(dstpath, "wb")
+			total = os.stat(srcpath).st_size
+			transferred = 0
+			while transferred < total:
+				self.show_progress(rel, float(transferred) / float(total))
+				toread = self.io_chunk
+				if (total - transferred) < toread:
+					toread = total-transferred
+				chunk = fpsrc.read(toread)
+				fpdst.write(chunk)
+				fpdst.flush()
+				transferred += toread
+			fpdst.close()
+			fpsrc.close()
+			self.feedback("Copy %s" % (rel))
 			self.show_ok()
 			return True
 		except Exception as e:
@@ -809,24 +820,21 @@ class SmartSync:
 		try:
 			while stack:
 				thisdir = stack.pop(0)
-				try:
-					for f in sorted(os.listdir(thisdir)):
-						items += 1
-						path = os.path.join(thisdir, f)
-						if os.path.isdir(path):
-							if include_dirs:
-								if prepend_dirname:
-									ret.append(path)
-								else:
-									ret.append(path[len(dirname)+1:])
-							stack.append(path)
-							continue
-						if prepend_dirname:
-							ret.append(path)
-						else:
-							ret.append(path[len(dirname)+1:])
-				except:
-					pass
+				for f in sorted(os.listdir(thisdir)):
+					items += 1
+					path = os.path.join(thisdir, f)
+					if os.path.isdir(path):
+						if include_dirs:
+							if prepend_dirname:
+								ret.append(path)
+							else:
+								ret.append(path[len(dirname)+1:])
+						stack.append(path)
+						continue
+					if prepend_dirname:
+						ret.append(path)
+					else:
+						ret.append(path[len(dirname)+1:])
 			self.show_ok()
 			return ret
 		except Exception as e:
@@ -860,8 +868,6 @@ class SmartSync:
 					return ftp
 				except:
 					ftp.close()
-					self.ftp_conns.remove(f)
-					ftp = None
 				break
 		try:
 			if ftp == None:
@@ -1021,7 +1027,6 @@ if __name__ == "__main__":
 		aliases = ["--logfile"], consumes=1, ShortHelp = "Log file (instead of stdout)")
 	opts.AddOpt("-h", help="Include hidden (dot-) files/dirs", aliases=["-include-hidden", "--include-hidden"], \
 		consumes = 0)
-	opts.AddOpt("-n", help="No target file removal", required=False, consumes=0, aliases = ['--no-remove'])
 	opts.ParseArgs()
 	if opts.RequiredMissing():
 		sys.exit(1)
@@ -1037,7 +1042,6 @@ if __name__ == "__main__":
 		cmdopts["archive"] = None
 	cmdopts["dummy"] = opts.selected("-dummy")
 	cmdopts["ignore"] = opts.value("-i")
-	cmdopts["no-remove"] = opts.selected('-n')
 	#opts = {"src":"/mnt/piggy/%s/new" % base,\
 	#				"dst":"ftp://daf:h4xx0r@mede8er/%s" % base,\
 	#				"name":base, \

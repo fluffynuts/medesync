@@ -1,0 +1,125 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Universal Ctags Team	//
+!_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
+!_TAG_PROGRAM_URL	https://ctags.io/	/official site/
+!_TAG_PROGRAM_VERSION	0.0.0	//
+AddOpt	../opts.py	/^  def AddOpt(self, opt, help = "(no help)", aliases = [], consumes = 0, $/;"	kind:member	line:50
+AppendValue	../opts.py	/^    def AppendValue(self, val):$/;"	kind:member	line:320
+BoolToStr	../opts.py	/^  def BoolToStr(self, b):$/;"	kind:member	line:120
+COLS	../medesync.py	/^	COLS = 78 # fallback$/;"	kind:variable	line:45
+COLS	../medesync.py	/^	COLS = None$/;"	kind:variable	line:43
+CheckType	../opts.py	/^  def CheckType(self, val, opt):$/;"	kind:member	line:136
+Dump	../opts.py	/^  def Dump(self):$/;"	kind:member	line:126
+GetConsoleCols	../opts.py	/^  def GetConsoleCols(self):$/;"	kind:member	line:22
+GetMaxLHSW	../opts.py	/^  def GetMaxLHSW(self, SkipAliases=False):$/;"	kind:member	line:78
+Match	../opts.py	/^    def Match(self, arg):$/;"	kind:member	line:312
+Option	../opts.py	/^  class Option:$/;"	kind:class	line:280
+Options	../opts.py	/^class Options:$/;"	kind:class	line:7
+ParseArgs	../opts.py	/^  def ParseArgs(self):$/;"	kind:member	line:167
+RequiredMissing	../opts.py	/^  def RequiredMissing(self):$/;"	kind:member	line:229
+SetValue	../opts.py	/^    def SetValue(self, val):$/;"	kind:member	line:326
+SmartSync	../medesync.py	/^class SmartSync:$/;"	kind:class	line:47
+Usage	../opts.py	/^    def Usage(self, Long=False, SkipAliases=False, ReturnAsString = False):$/;"	kind:member	line:404
+Usage	../opts.py	/^  def Usage(self, Long=False):$/;"	kind:member	line:90
+Valid	../opts.py	/^    def Valid(self, val):$/;"	kind:member	line:303
+__deinit__	../medesync.py	/^	def __deinit__(self):#<<<*\/$/;"	kind:function	line:81
+__init__	../medesync.py	/^	def __init__(self): #<<<$/;"	kind:member	line:48
+__init__	../opts.py	/^    def __init__(self, opt, help, aliases, consumes, ConsumesHelp, Default, ShortHelp,$/;"	kind:member	line:281
+__init__	../opts.py	/^  def __init__(self, UsageHeader = "", UnconsumedHelp = ""):$/;"	kind:member	line:8
+_print	../medesync.py	/^	def _print(self, s):#<<<*\/$/;"	kind:function	line:97
+_print	../opts.py	/^  def _print(self, s, indent = 0):$/;"	kind:member	line:64
+catch_dir	../medesync.py	/^	def catch_dir(self, line):#<<<*\/$/;"	kind:function	line:996
+cleanup	../medesync.py	/^	def cleanup(self, uri_base, listing, location):#<<<*\/$/;"	kind:function	line:470
+clear_last_error	../medesync.py	/^	def clear_last_error(self):#<<<$/;"	kind:function	line:163
+clear_status	../medesync.py	/^	def clear_status(self): #<<<$/;"	kind:function	line:864
+cmdopts	../medesync.py	/^	cmdopts = dict()$/;"	kind:variable	line:1103
+connect	../medesync.py	/^	def connect(self, host, user, passwd):#<<<$/;"	kind:function	line:166
+copy_file	../medesync.py	/^	def copy_file(self, src_base, dst_base, relative_path):#<<<$/;"	kind:function	line:702
+copy_file_local_to_ftp	../medesync.py	/^	def copy_file_local_to_ftp(self, src, dst, rel):#<<<$/;"	kind:function	line:723
+copy_file_local_to_local	../medesync.py	/^	def copy_file_local_to_local(self, src, dst, rel):#<<<$/;"	kind:function	line:814
+dotparts	../medesync.py	/^				dotparts = f.split(".")$/;"	kind:variable	line:338
+dotparts	../medesync.py	/^				dotparts = f.split(".")$/;"	kind:variable	line:344
+dst_size	../medesync.py	/^			dst_size = self.filesize(options["dst"], f)$/;"	kind:variable	line:379
+ensure_dir_exists	../medesync.py	/^	def ensure_dir_exists(self, uri_base, relative_path):#<<<$/;"	kind:function	line:626
+ensure_dir_exists_ftp	../medesync.py	/^	def ensure_dir_exists_ftp(self, uri_parts, relative_path):#<<<$/;"	kind:function	line:658
+ensure_dir_exists_local	../medesync.py	/^	def ensure_dir_exists_local(self, path):#<<<$/;"	kind:function	line:636
+f	../medesync.py	/^	f = SmartSync()$/;"	kind:variable	line:1102
+fdir	../medesync.py	/^				fdir = "\/".join(f.split("\/")[:-1])$/;"	kind:variable	line:447
+fdir	../medesync.py	/^				fdir = os.path.join(os.path.dirname(f))$/;"	kind:variable	line:445
+feedback	../medesync.py	/^	def feedback(self, fstr):#<<<$/;"	kind:function	line:136
+filesize	../medesync.py	/^	def filesize(self, base_uri, relative_path):#<<<*\/$/;"	kind:function	line:950
+format_rhs	../opts.py	/^    def format_rhs(self, s):$/;"	kind:member	line:358
+ftp_status	../medesync.py	/^	def ftp_status(self, b):$/;"	kind:function	line:796
+get_last_error	../medesync.py	/^	def get_last_error(self):#<<<$/;"	kind:function	line:157
+get_non_empty	../medesync.py	/^	def get_non_empty(self, l):#<<<*\/$/;"	kind:function	line:999
+get_terminal_size	../medesync.py	/^	def get_terminal_size(self):#<<<*\/$/;"	kind:function	line:102
+human_readable_time	../medesync.py	/^	def human_readable_time(self, secs):$/;"	kind:function	line:785
+humanreadable_rate	../medesync.py	/^	def humanreadable_rate(self, b, s):$/;"	kind:function	line:780
+humanreadable_size	../medesync.py	/^	def humanreadable_size(self, byteCount):$/;"	kind:function	line:772
+idx	../medesync.py	/^		idx = 0$/;"	kind:variable	line:357
+ioctl_GWINSZ	../medesync.py	/^		def ioctl_GWINSZ(fd):$/;"	kind:function	line:108
+is_ftp_dir	../medesync.py	/^	def is_ftp_dir(self, ftp, dirname):#<<<$/;"	kind:function	line:1060
+is_videofile	../medesync.py	/^	def is_videofile(self, path):#<<<$/;"	kind:function	line:291
+is_videofile	../medesync.py	/^	def is_videofile(self, path):$/;"	kind:function	line:282
+isdir	../medesync.py	/^	def isdir(self, uri_base, relative_path):#<<<*\/$/;"	kind:function	line:562
+leftw	../opts.py	/^    def leftw(self, SkipAliases=False):$/;"	kind:member	line:341
+local_files	../medesync.py	/^			local_files = self.remove_hidden(local_files, options["src"])$/;"	kind:variable	line:324
+local_files	../medesync.py	/^		local_files = self.remove_ignored(self.ls_R(options["src"], True, False), options["ignore"])$/;"	kind:variable	line:311
+logfp	../medesync.py	/^				logfp = open(opts.value("-l"), "a")$/;"	kind:variable	line:1126
+logfp	../medesync.py	/^			logfp = sys.stdout$/;"	kind:variable	line:1130
+logfp	../medesync.py	/^	logfp = sys.stdout$/;"	kind:variable	line:1122
+ls_R	../medesync.py	/^	def ls_R(self, path, include_dirs = False, prepend_dirname = True):#<<<$/;"	kind:function	line:228
+ls_R_ftp	../medesync.py	/^	def ls_R_ftp(self, uri_parts, include_dirs = False, prepend_dirname = True):#<<<$/;"	kind:function	line:1006
+ls_R_local	../medesync.py	/^	def ls_R_local(self, dirname, include_dirs=False, prepend_dirname = True): #<<<$/;"	kind:function	line:871
+medesync.py	../medesync.py	1;"	kind:file	line:1
+mentioned_calc	../medesync.py	/^				mentioned_calc = True$/;"	kind:variable	line:368
+mentioned_calc	../medesync.py	/^		mentioned_calc = False$/;"	kind:variable	line:359
+mkftp	../medesync.py	/^	def mkftp(self, host, user, password, port = None, timeout=None, passive=None):#<<<$/;"	kind:function	line:910
+mkftp2	../medesync.py	/^	def mkftp2(self, uri_parts):#<<<$/;"	kind:function	line:906
+move_file	../medesync.py	/^	def move_file(self, uri_from, relative_from, uri_to, relative_to):#<<<*\/$/;"	kind:function	line:490
+opts	../medesync.py	/^	opts = Options()$/;"	kind:variable	line:1075
+opts.py	../opts.py	1;"	kind:file	line:1
+pad	../opts.py	/^    def pad(self, s, w, padwith = " "):$/;"	kind:member	line:353
+perc	../medesync.py	/^			perc = (idx * 100.0) \/ total_files$/;"	kind:variable	line:362
+prepare	../opts.py	/^    def prepare(self, SkipAliases=False):$/;"	kind:member	line:332
+remote_files	../medesync.py	/^			remote_files = self.remove_hidden(remote_files, options["dst"])$/;"	kind:variable	line:325
+remote_files	../medesync.py	/^			remote_files = tmp$/;"	kind:variable	line:353
+remote_files	../medesync.py	/^		remote_files = None$/;"	kind:variable	line:321
+remote_files	../medesync.py	/^		remote_files = self.ls_R(options["dst"], True, False)$/;"	kind:variable	line:322
+remote_files	../medesync.py	/^		remote_files = self.remove_ignored(remote_files, options["ignore"])$/;"	kind:variable	line:354
+remove	../medesync.py	/^	def remove(self, uri_base, relative_path = ""):#<<<$/;"	kind:function	line:577
+remove_hidden	../medesync.py	/^	def remove_hidden(self, ls, base):#<<<*\/$/;"	kind:function	line:266
+remove_ignored	../medesync.py	/^	def remove_ignored(self, l, regex):#<<<*\/$/;"	kind:function	line:254
+resolvebool	../medesync.py	/^	def resolvebool(self, opts, key, default):#<<<$/;"	kind:function	line:248
+sanitise_ftp_path	../medesync.py	/^	def sanitise_ftp_path(self, p):#<<<*\/$/;"	kind:function	line:993
+sanitise_leftw	../opts.py	/^    def sanitise_leftw(self):$/;"	kind:member	line:336
+schedule_remove_item	../medesync.py	/^	def schedule_remove_item(self, to_remove, item):$/;"	kind:function	line:296
+selected	../opts.py	/^  def selected(self, opt):$/;"	kind:member	line:269
+selectedOptions	../opts.py	/^  def selectedOptions(self):$/;"	kind:member	line:273
+set_last_error	../medesync.py	/^	def set_last_error(self, descr, err): #<<<$/;"	kind:function	line:129
+shorten	../medesync.py	/^	def shorten(self, checkstr, maxlen = None):#<<<$/;"	kind:function	line:833
+show_fail	../medesync.py	/^	def show_fail(self):#<<<$/;"	kind:function	line:153
+show_ok	../medesync.py	/^	def show_ok(self):#<<<$/;"	kind:function	line:149
+show_progress	../medesync.py	/^	def show_progress(self, label, fraction):#<<<*\/$/;"	kind:function	line:683
+spin	../medesync.py	/^	def spin(self):#<<<*\/$/;"	kind:function	line:88
+spinner	../medesync.py	/^			spinner = self.spin()$/;"	kind:variable	line:361
+split_uri	../medesync.py	/^	def split_uri(self, uri):#<<<$/;"	kind:function	line:187
+src_size	../medesync.py	/^			src_size = self.filesize(options["src"], f)$/;"	kind:variable	line:371
+status	../medesync.py	/^	def status(self, statusstr, autofit = True):#<<<$/;"	kind:function	line:851
+status_callback	../medesync.py	/^	def status_callback(self, blocks):#<<<$/;"	kind:function	line:847
+sync	../medesync.py	/^	def sync(self, options):#<<<$/;"	kind:function	line:287
+sync	../medesync.py	/^	def sync(self, options):#<<<$/;"	kind:function	line:300
+tmp	../medesync.py	/^			tmp = []$/;"	kind:variable	line:348
+to_archive	../medesync.py	/^		to_archive = []$/;"	kind:variable	line:307
+to_copy	../medesync.py	/^		to_copy = []$/;"	kind:variable	line:305
+to_remove	../medesync.py	/^		to_remove = []$/;"	kind:variable	line:306
+totalBytes	../medesync.py	/^		totalBytes = self.overall_transfers["total"]$/;"	kind:variable	line:451
+totalHuman	../medesync.py	/^		totalHuman = self.humanreadable_size(totalBytes)$/;"	kind:variable	line:452
+total_files	../medesync.py	/^		total_files = len(local_files)$/;"	kind:variable	line:358
+uri_parts	../medesync.py	/^		uri_parts = self.split_uri(options["dst"])$/;"	kind:variable	line:434
+validate	../opts.py	/^  def validate(self, opt):$/;"	kind:member	line:260
+value	../opts.py	/^  def value(self, opt):$/;"	kind:member	line:265
+w	../medesync.py	/^				w = f + ".t"$/;"	kind:variable	line:422
+w	../medesync.py	/^				w = f + ".t"$/;"	kind:variable	line:428
+watched_files	../medesync.py	/^			watched_files = []$/;"	kind:variable	line:329
