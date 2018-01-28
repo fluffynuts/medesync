@@ -752,7 +752,6 @@ class SmartSync:
 			return False
 		try:
 			shutil.copyfile(srcpath, dstpath)
-			self.show_ok()
 			return True
 		except Exception as e:
 			self._print("Copy %s fails: %s" % (rel, str(e)))
